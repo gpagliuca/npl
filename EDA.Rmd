@@ -298,11 +298,36 @@ en_ngrams_10
 
 This are the 10 most frequent 3-grams for the whole (sampled) English text.
 
+## Modeling
 
+```{r}
+dict <- function(corpus, n) {
+    t <- freq(tokenize_ngrams(corpus, n=n, n_min=n), 'Lang')
+    t1 <- t[t$Freq > 10, ]
+    t2 <- as.character(t1$Lang)
+    t3 <- t(as.data.frame(sapply(t2, strsplit, ' ')))
+    row.names(t3) <- 1:nrow(t3)
+    return(t3)
+}
+```
+
+```{r}
+d <- dict(en_corpus, 3)
+colnames(d) <- c('w1', 'w2', 'w3')
+write.table(d, 'en_3.csv')
+```
+
+
+```{r}
+d <- dict(en_corpus, 5)
+colnames(d) <- c('w1', 'w2', 'w3', 'w4', 'w5')
+write.table(d, 'en_5.csv')
+```
 ## Open questions
 
 1. Is the sampling size, 5%, representative?
 2. Is there any significant difference between blogs, news and twitter?
+3. How to remove "bad" words?
 
 
 
