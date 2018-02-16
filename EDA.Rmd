@@ -1,7 +1,7 @@
 ---
 title: "EDA"
 author: "Giuseppe Pagliuca"
-date: "February 13, 2018"
+date: "February 14, 2018"
 output: html_document
 ---
 
@@ -9,24 +9,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## NPL - EDA
-
-This document is an exploratory analysis of text data realted to the Capstone Project for the Johns Hopkins Data Science Specialization.
-
-## Intro, data downloading and sapmpling
-
-```{r libraries and constants, echo=F}
-library(tokenizers)
-library(ggplot2)
-url <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
-out_dir<-"data"
-data_path <- "data/final/"
-working_path <- "data/sampled/"
-```
-
-The raw data can be found: [here](url). Our first task is to download the data assuming it was not done before:
-
-```{r cache=T}
+```{r functions, echo=FALSE}
+# Download data
 get_data <- function() {
     if (!file.exists("Coursera-SwiftKey.zip")) {
         download.file(url, "Coursera-SwiftKey.zip")
@@ -35,13 +19,7 @@ get_data <- function() {
         unzip("Coursera-SwiftKey.zip", exdir=out_dir)
     }
 }
-get_data()
-```
 
-Because of the data size, the second step is to sample a portion of data. `rbinom` has been used for this purpose sampling 5% of the original data. This sampled data is saved in new txt files:
-
-```{r sampling, cache=TRUE}
-## Sampling data
 sampling_file <- function(fname, sample_size) {
     set.seed(42)
     lang <- unlist(strsplit(fname, "\\."))[1]
@@ -137,23 +115,6 @@ loading <- function(sample_size) {
     return(l)
 }
 
-sample_size <- 0.05
-#sampling(sample_size)
-sampled_data <- loading(sample_size)
-
-```
-
-## Sampled data loading and pre-processing
-
-Now we have to load the sampled data and preprocess it. The preprocess step:
-* merges the text per language
-* remove the punctuation
-* remove the numbers
-* order the text courpus per word frequency
-
-A `cutoff` optional parameter is available in case short words have to be excluded.
-
-```{r loading, cache=T}
 text_preprocessing <- function(text, cutoff) {
     text <- paste(text, collapse=' ')
     text <- gsub("[[:punct:]]", '', text)
@@ -201,14 +162,6 @@ merge_text <- function(d, cutoff=4) {
     return(l)
 }
 
-merged_text <- merge_text(sampled_data, cutoff=0)
-```
-
-## Word frequency
-
-This is the word frequency of the most frequent 10 words assuming no cutoff on the word length is applied:
-
-```{r frequency}
 # Calculate the frequencies
 freq <- function(text, label) {
     text <- table(text)
@@ -217,13 +170,75 @@ freq <- function(text, label) {
     names(d) <- c(label, 'Freq')
     return(d)
 }
+```
 
+> Note: functions called below are defined in a dedicated hidden chunk above. 
+> [Here](https://github.com/gpagliuca/npl) the full code
+
+## NPL - EDA
+
+This document is an exploratory analysis of text data related to the Capstone Project for the Johns Hopkins Data Science Specialization. Aim of this EDA is to familiarize with the data, answer some preliminary questions and prepare the modeling work.
+
+## Intro, data downloading and sampling
+
+```{r libraries and constants, echo=F}
+library(tokenizers)
+library(ggplot2)
+url <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+out_dir<-"data"
+data_path <- "./data/final/"
+working_path <- "./data/sampled/"
+```
+
+The raw data can be found: [here](url). Our first task is to download the data (in case it was not done before):
+
+```{r cache=T}
+get_data()
+```
+
+Because of the data size (> 500 mb), the second step is to sample a portion of data. `rbinom` has been used for this purpose sampling 5% of the original data. This sampled data is saved in new txt files:
+
+```{r sampling, cache=TRUE}
+## Sampling (if needed) and loading data
+sample_size <- 0.05
+if (!file.exists(paste(working_path, sample_size, ".en_US.blogs.txt", sep=''))) {
+  sampling(sample_size)  
+}
+sampled_data <- loading(sample_size)
+```
+
+## Sampled data loading and pre-processing
+
+Now we have to load the sampled data and pre-process it. The pre-process step:
+* merges the text per language
+* remove the punctuation
+* remove the numbers
+* order the text corpus per word frequency
+
+A `cutoff` optional parameter is available in case short words have to be excluded.
+
+```{r loading, cache=T}
+# Text preprocessing
+merged_text <- merge_text(sampled_data, cutoff=0)
+```
+
+## Word counting
+
+Number of words per data source (referred to the sampled data):
+```{r word counting, echo=TRUE}
+sapply(sapply(sampled_data, strsplit, ' '), length)
+```
+
+## Word frequency
+
+This is the word frequency of the most frequent 10 words assuming no cutoff on the word length is applied:
+
+```{r frequency}
 ## Frequencies
-print('Calculating freqs... ')
 freq_en <- freq(merged_text$en, 'English')
-freq_de <- freq(merged_text$de, 'overall')
-freq_fi <- freq(merged_text$fi, 'overall')
-freq_ru <- freq(merged_text$ru, 'overall')
+freq_de <- freq(merged_text$de, 'German')
+freq_fi <- freq(merged_text$fi, 'Finnish')
+freq_ru <- freq(merged_text$ru, 'Russian')
 fr <- (cbind(head(freq_en, 10),
              head(freq_de, 10), 
              head(freq_fi, 10), 
@@ -231,9 +246,28 @@ fr <- (cbind(head(freq_en, 10),
 print(fr)
 ```
 
+```{r English freq}
+f <- head(freq_en, 20)
+ggplot(f) + geom_bar(aes(x = English, y = Freq), stat = "identity", fill='lightgreen')
+```
+
+```{r German freq}
+f <- head(freq_de, 20)
+ggplot(f) + geom_bar(aes(x = German, y = Freq), stat = "identity", fill='red')
+```
+
+```{r Finnish freq}
+f <- head(freq_fi, 20)
+ggplot(f) + geom_bar(aes(x = Finnish, y = Freq), stat = "identity", fill='lightblue')
+```
+
+```{r Russian freq}
+f <- head(freq_ru, 20)
+ggplot(f) + geom_bar(aes(x = Russian, y = Freq), stat = "identity", fill='orange')
+```
 ## Plotting: words frequency in function of the dictionary
 
-```{r pressure, echo=FALSE}
+```{r plotting, echo=FALSE}
 ## Plotting 
 d1_df <- data.frame(English=100*cumsum(freq_en$Freq)/sum(freq_en$Freq))
 d2_df <- data.frame(German= 100*cumsum(freq_de$Freq)/sum(freq_de$Freq))
@@ -247,9 +281,43 @@ g <- ggplot() +
     geom_line(data=d4_df, aes(x=100*(1:nrow(d4_df))/nrow(d4_df), y=Russian, color='Russian')) +
     geom_hline(yintercept=50, linetype="dashed", color = "red", size=1) +
     geom_hline(yintercept=80, linetype="dashed", color = "red", size=1) + 
-    labs(x='dictionary percentage [%]', y='word frequency [%]') +
+    labs(x='dictionary percentage [%]', y='covered word frequency [%]') +
     scale_color_discrete(name = "Language") 
 print(g)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## N-grams 
+
+N-grams can be easily defined with the help of the `tokenizers` package:
+
+```{r n-grams, cache=T}
+en_corpus <- paste(merged_text$en, collapse=' ')
+en_ngrams_10 <- head(freq(tokenize_ngrams(en_corpus, n=3, n_min=3), 'English'), 10)
+en_ngrams_10
+```
+
+This are the 10 most frequent 3-grams for the whole (sampled) English text.
+
+
+## Open questions
+
+1. Is the sampling size, 5%, representative?
+2. Is there any significant difference between blogs, news and twitter?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
